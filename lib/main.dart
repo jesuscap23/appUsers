@@ -15,14 +15,36 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  Future<List<dynamic>> _fetchUsers() async {
+    List<dynamic> users = [];
+    try {
+      final usuarioData = {
+        'action': 'getusers',
+      };
+
+      final response = await http.post(
+        Uri.parse(
+            'https://container-134012752825.europe-southwest1.run.app/usuarios'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(usuarioData),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        users = jsonDecode(response.body);
+      } else {
+        throw Exception('Error fetching users: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error fetching users: $e');
+    }
+    return users;
+  }
+
   @override
   void initState() {
     super.initState();
-    _fetchUsers(); // Fetch users when the app starts
-  }
-
-  Future<void> _fetchUsers() async {
-    // ... (same as before) ...
   }
 
   @override
@@ -33,10 +55,26 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'ProFit Bands'),
+      home: FutureBuilder<List<dynamic>>(
+        future: _fetchUsers(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else {
+            return MyHomePage(title: 'ProFit Bands', users: snapshot.data ?? []);
+          }
+        },
+      ),
       routes: {
         '/userDetails': (context) => const UserDetailsPage(),
-        '/newUser': (context) => const NewUserPage(),
+        '/newUser': (context) => NewUserPage(onUserAdded: () {
+              //This callback refreshes the user list after adding a new user
+              final myHomePageState =
+                  context.findAncestorStateOfType<_MyHomePageState>();
+              myHomePageState?._fetchUsers();
+            }),
         '/modifyUser': (context) => const ModifyUserPage(),
       },
     );
@@ -44,8 +82,12 @@ class _MyAppState extends State<MyApp> {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  final List<dynamic> users;
   final String title;
+  final VoidCallback? onUserAdded; // Callback for when a user is added
+
+  const MyHomePage(
+      {super.key, required this.title, required this.users, this.onUserAdded});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -118,7 +160,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: Wrap(
                           spacing: 8.0,
                           runSpacing: 4.0,
-                          children: users.map((user) {
+                          children: widget.users.map((user) {
                             return ElevatedButton.icon(
                               onPressed: () {
                                 Navigator.pushNamed(context, '/userDetails',
@@ -349,7 +391,9 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
 }
 
 class NewUserPage extends StatefulWidget {
-  const NewUserPage({super.key});
+  final VoidCallback? onUserAdded; // Callback function
+
+  const NewUserPage({super.key, this.onUserAdded});
 
   @override
   State<NewUserPage> createState() => _NewUserPageState();
@@ -399,6 +443,8 @@ class _NewUserPageState extends State<NewUserPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Usuario creado correctamente')),
         );
+        widget.onUserAdded?.call(); // Call the callback
+        Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${response.statusCode}')),
