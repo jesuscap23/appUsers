@@ -7,8 +7,23 @@ void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsers(); // Fetch users when the app starts
+  }
+
+  Future<void> _fetchUsers() async {
+    // ... (same as before) ...
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -209,11 +224,45 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
     }
   }
 
+  Future<Map<String, dynamic>?> _fetchUser(String userId) async {
+    try {
+      final usuarioData = {
+        'action': 'getuser',
+        'user_id': userId,
+      };
+
+      final response = await http.post(
+        Uri.parse(
+            'https://container-134012752825.europe-southwest1.run.app/usuarios'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(usuarioData),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching user: ${response.statusCode}')),
+        );
+        return null;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching user: $e')),
+      );
+      return null;
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final user =
         ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
     final userId = user['id'];
+    final imageUrl = user['imageUrl']; // Assuming imageUrl is in the JSON
 
     return Scaffold(
       appBar: AppBar(title: Text('User Details: ${user['nick']}')),
@@ -221,23 +270,76 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('ID: ${user['id']}'),
-            Text('Nick: ${user['nick']}'),
-            Text('Nombre: ${user['nombre']}'),
-            Text('Apellido 1: ${user['apellido1']}'),
-            Text('Apellido 2: ${user['apellido2']}'),
-            Text('Email: ${user['email']}'),
-            Text('Telefono: ${user['movil']}'),
-            Text('Ano Nacimiento: ${user['ano_nacimiento']}'),
-            ElevatedButton(
-              onPressed: () => _deleteUser(userId),
-              child: const Text('Eliminar Usuario'),
+            // User Image
+            CircleAvatar(
+              radius: 50,
+              backgroundImage: imageUrl != null && imageUrl.isNotEmpty
+                  ? NetworkImage(imageUrl)
+                  : null, // Handle cases where imageUrl is null or empty
+              child: imageUrl == null || imageUrl.isEmpty
+                  ? const Icon(Icons.person, size: 50)
+                  : null,
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/modifyUser', arguments: user);
-              },
-              child: const Text('Modificar Usuario'),
+            const SizedBox(height: 16),
+
+            // Nickname (prominently displayed)
+            Text(
+              user['nick'],
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+
+            // Full Name (on one line)
+            Text(
+              '${user['nombre']} ${user['apellido1']} ${user['apellido2']}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+
+            // Other details (using Row for better layout)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.email),
+                const SizedBox(width: 8),
+                Text(user['email']),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.phone),
+                const SizedBox(width: 8),
+                Text(user['movil']),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.calendar_today),
+                const SizedBox(width: 8),
+                Text(user['ano_nacimiento']),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Buttons (using Row for better layout)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                ElevatedButton(
+                  onPressed: () => _deleteUser(userId),
+                  child: const Text('Eliminar Usuario'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/modifyUser', arguments: user);
+                  },
+                  child: const Text('Modificar Usuario'),
+                ),
+              ],
             ),
           ],
         ),
@@ -491,12 +593,55 @@ class _ModifyUserPageState extends State<ModifyUserPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Usuario modificado correctamente')),
         );
-        Navigator.pop(context);
+        //Reload user data after modification
+        final updatedUser = await _fetchUser(user['id']);
+        if(updatedUser != null){
+          Navigator.pop(context);
+          //Instead of refreshing the entire user list, refresh only the specific user details
+          Navigator.pushReplacementNamed(context, '/userDetails', arguments: updatedUser);
+          //Refresh the user list in MyHomePage
+          final myHomePageState = context.findAncestorStateOfType<_MyHomePageState>();
+          if(myHomePageState != null){
+            myHomePageState._fetchUsers();
+          }
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${response.statusCode}')),
         );
       }
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchUser(String userId) async {
+    try {
+      final usuarioData = {
+        'action': 'getuser',
+        'user_id': userId,
+      };
+
+      final response = await http.post(
+        Uri.parse(
+            'https://container-134012752825.europe-southwest1.run.app/usuarios'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(usuarioData),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching user: ${response.statusCode}')),
+        );
+        return null;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching user: $e')),
+      );
+      return null;
     }
   }
 
