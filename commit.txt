@@ -1,0 +1,22 @@
+# Committing changes locally and remotely
+
+**1
+
+git add .  
+# Adds all changes in the current directory and subdirectories.  You can specify files instead of '.' if needed.
+
+**2. Commit your changes locally:**
+
+
+git commit -m "Your commit message"
+
+
+**3. Push your changes to the remote repository:**
+
+git push origin master
+
+**Example workflow:**
+
+git add .
+git commit -m "crud completo usuarios"
+git push origin master
