@@ -94,9 +94,15 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<dynamic> users = [];
+  List<dynamic> users = []; // Initialize as an empty list
   bool isLoading = false;
   String error = '';
+
+  @override
+  void initState() {
+    super.initState();
+    users = widget.users; // Initialize users in initState
+  }
 
   Future<void> _fetchUsers() async {
     setState(() {
@@ -160,7 +166,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: Wrap(
                           spacing: 8.0,
                           runSpacing: 4.0,
-                          children: widget.users.map((user) {
+                          children: users.map((user) {
                             return ElevatedButton.icon(
                               onPressed: () {
                                 Navigator.pushNamed(context, '/userDetails',
