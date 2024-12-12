@@ -167,8 +167,7 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
             ),
             const SizedBox(height: 16),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            Column(
               children: [
                 ElevatedButton(
                   onPressed: () => _deleteUser(userId),
@@ -179,6 +178,12 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
                     Navigator.pushNamed(context, '/modifyUser', arguments: user);
                   },
                   child: const Text('Modificar Usuario'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/newWorkout');
+                  },
+                  child: const Text('Nuevo entrenamiento'),
                 ),
               ],
             ),

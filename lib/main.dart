@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'user_details.dart';
+import 'new_workout.dart';
 
 void main() {
   runApp(const MyApp());
@@ -75,6 +76,8 @@ class _MyAppState extends State<MyApp> {
               myHomePageState?.refreshUsers();
             }),
         '/modifyUser': (context) => const ModifyUserPage(),
+        '/newWorkout': (context) => const NewWorkoutView(), 
+        '/contarRepeticiones': (context) => const Placeholder(), // Added route
       },
     );
   }
