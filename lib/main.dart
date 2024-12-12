@@ -73,7 +73,7 @@ class _MyAppState extends State<MyApp> {
               //This callback refreshes the user list after adding a new user
               final myHomePageState =
                   context.findAncestorStateOfType<_MyHomePageState>();
-              myHomePageState?._fetchUsers();
+              myHomePageState?.refreshUsers();
             }),
         '/modifyUser': (context) => const ModifyUserPage(),
       },
@@ -140,6 +140,10 @@ class _MyHomePageState extends State<MyHomePage> {
         isLoading = false;
       });
     }
+  }
+
+  void refreshUsers() {
+    _fetchUsers();
   }
 
   @override
@@ -237,6 +241,8 @@ class UserDetailsPage extends StatefulWidget {
 }
 
 class _UserDetailsPageState extends State<UserDetailsPage> {
+  Map<String, dynamic>? _user; // Added to store fetched user data
+
   Future<void> _deleteUser(String userId) async {
     try {
       final usuarioData = {
@@ -304,11 +310,34 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
     }
   }
 
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user =
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+    final userId = user['id'];
+    final fetchedUser = await _fetchUser(userId);
+    setState(() {
+      _user = fetchedUser;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user =
-        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+    if (_user == null) {
+      return const Center(child: CircularProgressIndicator()); // Show loading indicator
+    }
+
+    final user = _user!;
     final userId = user['id'];
     final imageUrl = user['imageUrl']; // Assuming imageUrl is in the JSON
 
@@ -654,7 +683,7 @@ class _ModifyUserPageState extends State<ModifyUserPage> {
           //Refresh the user list in MyHomePage
           final myHomePageState = context.findAncestorStateOfType<_MyHomePageState>();
           if(myHomePageState != null){
-            myHomePageState._fetchUsers();
+            myHomePageState.refreshUsers();
           }
         }
       } else {
